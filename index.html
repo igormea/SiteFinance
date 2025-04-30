@@ -110,7 +110,6 @@
         if (data.status === 'ok') {
           msg.style.color = 'green';
           msg.textContent = modoCadastro ? 'Cadastro realizado!' : 'Login realizado!';
-          // Redirecionar para a página principal com id_usuario, por exemplo via localStorage
           localStorage.setItem('usuario', JSON.stringify(data));
           window.location.href = 'app.html';
         } else {
@@ -119,7 +118,7 @@
         }
       } catch (error) {
         msg.style.color = '#c62828';
-        msg.textContent = 'Erro de conexão com o servidor.';
+        msg.textContent = 'Erro de comunicação com o servidor.';
       }
     });
   </script>
