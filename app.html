@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Distribuição de Renda</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+  <style>
+    body {
+      background-color: #f5f5f5;
+      padding: 1rem;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .card {
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .form-label {
+      font-weight: 500;
+    }
+    canvas {
+      max-height: 220px;
+    }
+    #msg {
+      font-size: 0.9rem;
+      color: #2e7d32;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card p-4">
+      <h4 class="text-center mb-3">Distribuição de Renda</h4>
+      <div id="msg" class="text-center mb-2"></div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <label class="form-label">Data de Recebimento</label>
+          <input type="date" id="data_recebida" class="form-control">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Renda (R$)</label>
+          <input type="number" id="renda" class="form-control">
+        </div>
+      </div>
+
+      <hr>
+      <h6>Distribuição da Renda (%)</h6>
+      <div class="row">
+        <div class="col">
+          <label class="form-label">Essencial</label>
+          <input type="number" id="p_essencial" class="form-control" value="55">
+        </div>
+        <div class="col">
+          <label class="form-label">Lazer</label>
+          <input type="number" id="p_lazer" class="form-control" value="10">
+        </div>
+        <div class="col">
+          <label class="form-label">Educação</label>
+          <input type="number" id="p_educacao" class="form-control" value="5">
+        </div>
+        <div class="col">
+          <label class="form-label">Investimentos</label>
+          <input type="number" id="p_investimentos" class="form-control" value="30">
+        </div>
+      </div>
+
+      <hr>
+      <h6>Distribuição dos Investimentos (%)</h6>
+      <div class="row">
+        <div class="col">
+          <label class="form-label">Curto</label>
+          <input type="number" id="p_curto" class="form-control" value="35">
+        </div>
+        <div class="col">
+          <label class="form-label">Médio</label>
+          <input type="number" id="p_medio" class="form-control" value="25">
+        </div>
+        <div class="col">
+          <label class="form-label">Longo</label>
+          <input type="number" id="p_longo" class="form-control" value="15">
+        </div>
+        <div class="col">
+          <label class="form-label">Reserva</label>
+          <input type="number" id="p_reserva" class="form-control" value="15">
+        </div>
+        <div class="col">
+          <label class="form-label">Aposentadoria</label>
+          <input type="number" id="p_aposentadoria" class="form-control" value="10">
+        </div>
+      </div>
+
+      <div class="text-center mt-3">
+        <button class="btn btn-primary" onclick="salvarDistribuicao()">Salvar Distribuição</button>
+      </div>
+
+      <div class="row mt-4">
+        <div class="col-md-6">
+          <canvas id="chartRenda"></canvas>
+        </div>
+        <div class="col-md-6">
+          <canvas id="chartInvest"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const endpoint = "https://script.google.com/macros/s/AKfycby1C3AOZFJK4sJmki5HFHOk7O5ir8cbnhVO5m7gocR6CBvj5SFm8R-MnPFX7jyW-cpeNg/exec";
+    const usuario = JSON.parse(localStorage.getItem('usuario'));
+
+    if (!usuario) {
+      window.location.href = "index.html";
+    }
+
+    const ids = ["p_essencial", "p_lazer", "p_educacao", "p_investimentos", "p_curto", "p_medio", "p_longo", "p_reserva", "p_aposentadoria", "renda"];
+    ids.forEach(id => document.getElementById(id).addEventListener("input", calcular));
+
+    async function salvarDistribuicao() {
+      const payload = {
+        acao: "salvar_renda",
+        id_usuario: usuario.id_usuario,
+        data_recebida: document.getElementById("data_recebida").value,
+        renda: parseFloat(document.getElementById("renda").value),
+        p_essencial: parseFloat(document.getElementById("p_essencial").value),
+        p_lazer: parseFloat(document.getElementById("p_lazer").value),
+        p_educacao: parseFloat(document.getElementById("p_educacao").value),
+        p_investimentos: parseFloat(document.getElementById("p_investimentos").value),
+        p_curto: parseFloat(document.getElementById("p_curto").value),
+        p_medio: parseFloat(document.getElementById("p_medio").value),
+        p_longo: parseFloat(document.getElementById("p_longo").value),
+        p_reserva: parseFloat(document.getElementById("p_reserva").value),
+        p_aposentadoria: parseFloat(document.getElementById("p_aposentadoria").value)
+      };
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const json = await res.json();
+        document.getElementById("msg").textContent = "Distribuição salva com sucesso!";
+      } catch (err) {
+        document.getElementById("msg").textContent = "Erro ao salvar.";
+      }
+    }
+
+    async function carregarUltimaDistribuicao() {
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          body: JSON.stringify({ acao: "buscar_ultimas", id_usuario: usuario.id_usuario }),
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const dados = await res.json();
+        if (dados.status === "ok") {
+          document.getElementById("data_recebida").value = dados.data_recebida;
+          document.getElementById("renda").value = dados.renda;
+          document.getElementById("p_essencial").value = dados.p_essencial;
+          document.getElementById("p_lazer").value = dados.p_lazer;
+          document.getElementById("p_educacao").value = dados.p_educacao;
+          document.getElementById("p_investimentos").value = dados.p_investimentos;
+          document.getElementById("p_curto").value = dados.p_curto;
+          document.getElementById("p_medio").value = dados.p_medio;
+          document.getElementById("p_longo").value = dados.p_longo;
+          document.getElementById("p_reserva").value = dados.p_reserva;
+          document.getElementById("p_aposentadoria").value = dados.p_aposentadoria;
+          calcular();
+        }
+      } catch (e) {
+        console.error("Erro ao carregar dados", e);
+      }
+    }
+
+    const chartRenda = new Chart(document.getElementById("chartRenda"), {
+      type: "bar",
+      data: {
+        labels: ["Essencial", "Lazer", "Educação", "Investimentos"],
+        datasets: [{ label: "R$", data: [0,0,0,0], backgroundColor: ["#2e7d32","#fbc02d","#0288d1","#6a1b9a"] }]
+      },
+      options: {
+        plugins: {
+          legend: { display: false },
+          datalabels: {
+            anchor: 'end',
+            align: 'top',
+            formatter: val => `R$ ${val.toFixed(2)}`,
+            color: '#000'
+          }
+        },
+        scales: { y: { beginAtZero: true } }
+      },
+      plugins: [ChartDataLabels]
+    });
+
+    const chartInvest = new Chart(document.getElementById("chartInvest"), {
+      type: "bar",
+      data: {
+        labels: ["Curto", "Médio", "Longo", "Reserva", "Aposentadoria"],
+        datasets: [{ label: "R$", data: [0,0,0,0,0], backgroundColor: ["#43a047","#ffb300","#1976d2","#e53935","#6d4c41"] }]
+      },
+      options: {
+        plugins: {
+          legend: { display: false },
+          datalabels: {
+            anchor: 'end',
+            align: 'top',
+            formatter: val => `R$ ${val.toFixed(2)}`,
+            color: '#000'
+          }
+        },
+        scales: { y: { beginAtZero: true } }
+      },
+      plugins: [ChartDataLabels]
+    });
+
+    function calcular() {
+      const renda = parseFloat(document.getElementById("renda").value);
+      if (!renda) return;
+
+      const p = id => parseFloat(document.getElementById(id).value);
+      const vEssencial = renda * (p("p_essencial") / 100);
+      const vLazer = renda * (p("p_lazer") / 100);
+      const vEducacao = renda * (p("p_educacao") / 100);
+      const vInvest = renda * (p("p_investimentos") / 100);
+
+      const vCurto = vInvest * (p("p_curto") / 100);
+      const vMedio = vInvest * (p("p_medio") / 100);
+      const vLongo = vInvest * (p("p_longo") / 100);
+      const vReserva = vInvest * (p("p_reserva") / 100);
+      const vAposentadoria = vInvest * (p("p_aposentadoria") / 100);
+
+      chartRenda.data.datasets[0].data = [vEssencial, vLazer, vEducacao, vInvest];
+      chartInvest.data.datasets[0].data = [vCurto, vMedio, vLongo, vReserva, vAposentadoria];
+      chartRenda.update();
+      chartInvest.update();
+    }
+
+    carregarUltimaDistribuicao();
+  </script>
+</body>
+</html>
